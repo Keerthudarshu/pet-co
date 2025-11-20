@@ -1,0 +1,792 @@
+import React, {useState, useRef, useEffect} from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+import Header from '../../components/ui/Header';
+import { useCart } from '../../contexts/CartContext';
+import productApi from '../../services/productApi';
+import dataService from '../../services/dataService';
+import apiClient from '../../services/api';
+
+const categories = [
+  { id: 'all', label: 'All Cat Food', img: '/assets/images/cat/cf1.webp' },
+  { id: 'dry', label: 'Dry Food', img: '/assets/images/cat/cf2.webp' },
+  { id: 'wet', label: 'Wet Food', img: '/assets/images/cat/cf3.webp' },
+  { id: 'grain-free', label: 'Grain Free', img: '/assets/images/cat/cf4.webp' },
+  { id: 'kitten', label: 'Kitten Food', img: '/assets/images/cat/cf5.webp' },
+  { id: 'hypo', label: 'Hypoallergenic', img: '/assets/images/cat/cf6.webp' },
+  { id: 'vet', label: 'Veterinary Food', img: '/assets/images/cat/cf7.webp' },
+  { id: 'toppers', label: 'Food Toppers & Gravy', img: '/assets/images/cat/cf8.webp' }
+  
+  
+];
+
+// reuse sampleProducts from DogFood layout but with cat-centric names/images
+const sampleProducts = [
+  {
+    id: 'c1',
+    name: 'Persian Choice Wet Cat Food',
+    image: '/assets/images/essential/meowsi.webp',
+    badges: ['Extra 3% OFF'],
+    variants: ['85 g','170 g','Pack Of 3'],
+    price: 199
+  },
+  {
+    id: 'c2',
+    name: 'Royal Canin Cat Adult Dry Food',
+    image: '/assets/images/essential/royal canin.webp',
+    badges: ['Get Extra 5% OFF'],
+    variants: ['1 kg','2.5 kg','10 kg'],
+    price: 862.40,
+    original: 980
+  },
+  {
+    id: 'c3',
+    name: 'Whiskas Classic Chicken & Rice',
+    image: '/assets/images/essential/whiskas.webp',
+    badges: ['Get Extra 5% OFF'],
+    variants: ['100 g','300 g','Pack Of 7'],
+    price: 99
+  }
+];
+
+const ProductCard = ({p}) => {
+  const [qty] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState(p.variants?.[0] || null);
+  const { addToCart, addToWishlist, isInWishlist, removeFromWishlist } = useCart();
+  const navigate = useNavigate();
+
+  const handleAdd = () => {
+    const productToAdd = {
+      id: p.id,
+      productId: p.id,
+      name: p.name,
+      image: p.image,
+      price: p.price,
+      originalPrice: p.original || p.price,
+      variant: selectedVariant || 'Default',
+      category: p.category || 'cat-food',
+      brand: p.brand || 'Brand'
+    };
+    addToCart(productToAdd, 1);
+  };
+
+  const handleWishlist = () => {
+    if (isInWishlist(p.id)) {
+      removeFromWishlist(p.id);
+    } else {
+      addToWishlist({ id: p.id, name: p.name, image: p.image, price: p.price });
+    }
+  };
+
+  return (
+    <article className="bg-white rounded-lg border border-border overflow-hidden shadow-sm">
+      <div className="p-3">
+        <div className="h-8 flex items-center justify-start">
+          <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-t-md">{p.badges?.[0]}</div>
+        </div>
+        <button onClick={() => navigate(`/product-detail-page?id=${p.id}`)} className="mt-3 h-44 flex items-center justify-center bg-[#f6f8fb] rounded w-full">
+          <img src={p.image} alt={p.name} className="max-h-40 object-contain" />
+        </button>
+        <h3 onClick={() => navigate(`/product-detail-page?id=${p.id}`)} className="mt-3 text-sm font-semibold text-foreground cursor-pointer">{p.name}</h3>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {p.variants.map((v,i)=>(
+            <button key={i} onClick={() => setSelectedVariant(v)} className={`text-xs px-2 py-1 border border-border rounded ${selectedVariant === v ? 'bg-green-600 text-white' : 'bg-white'}`}>{v}</button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div>
+            <div className="text-lg font-bold">₹{p.price.toFixed(2)}</div>
+            {p.original && <div className="text-sm text-muted-foreground line-through">₹{p.original}</div>}
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <button onClick={handleAdd} className="bg-orange-500 text-white px-4 py-2 rounded-full">Add</button>
+            <button onClick={handleWishlist} className="text-xs text-muted-foreground">{isInWishlist(p.id) ? 'Remove ♥' : 'Wishlist ♡'}</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+const CatFood = ({ initialActive = 'All Cat Food' }) => {
+  const [active, setActive] = useState(initialActive);
+  const { getCartItemCount, cartItems } = useCart();
+  const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const topFilters = ['Brand','Cat/Kitten','Life Stage','Breed Size','Product Type','Special Diet','Protein Source','Price','Weight','Size','Sub Category'];
+  const [selectedTopFilter, setSelectedTopFilter] = useState(topFilters[0]);
+  const topRef = useRef(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const drawerContentRef = useRef(null);
+  const sectionRefs = useRef({});
+
+  // Filter state management
+  const [selectedFilters, setSelectedFilters] = useState({
+    brands: [],
+    catKitten: [],
+    lifeStages: [],
+    breedSizes: [],
+    productTypes: [],
+    specialDiets: [],
+    proteinSource: [],
+    priceRanges: [],
+    weights: [],
+    sizes: [],
+    subCategories: [],
+    sortBy: 'Featured'
+  });
+
+  const toggleFilter = (category, value) => {
+    setSelectedFilters(prev => ({
+      ...prev,
+      [category]: prev[category].includes(value)
+        ? prev[category].filter(item => item !== value)
+        : [...prev[category], value]
+    }));
+  };
+
+  const setSortBy = (sortValue) => {
+    setSelectedFilters(prev => ({ ...prev, sortBy: sortValue }));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedFilters({
+      brands: [],
+      catKitten: [],
+      lifeStages: [],
+      breedSizes: [],
+      productTypes: [],
+      specialDiets: [],
+      proteinSource: [],
+      priceRanges: [],
+      weights: [],
+      sizes: [],
+      subCategories: [],
+      sortBy: 'Featured'
+    });
+  };
+
+  const openFilterAndScroll = (key) => {
+    setSelectedTopFilter(key);
+    setFilterOpen(true);
+    const doScroll = () => {
+      const container = drawerContentRef.current;
+      const el = sectionRefs.current[key];
+      if (container && el) {
+        const drawerHeaderHeight = 64;
+        const top = el.offsetTop;
+        const scrollTo = Math.max(0, top - drawerHeaderHeight - 8);
+        container.scrollTo({ top: scrollTo, behavior: 'smooth' });
+        try {
+          el.classList.add('section-highlight');
+          setTimeout(() => { el.classList.remove('section-highlight'); }, 1400);
+        } catch (err) {}
+      }
+    };
+    setTimeout(doScroll, 220);
+  };
+
+  // sample filter data for the drawer (cat-specific filters)
+  const brands = ['Meowsi','Royal Canin','Whiskas','Purina','Applaws','Friskies','Hill\'s','IAMS','Felix'];
+  const catKitten = ['Kitten','Adult Cat'];
+  const lifeStages = ['Kitten','Adult','Senior'];
+  const breedSizes = ['Small','Medium','Large','Persian','Maine Coon','Siamese'];
+  const productTypes = ['Combo','Dry Food','Wet Food','Food Toppers','Treat'];
+  const specialDiets = ['Grain Free','Hypoallergenic','Chicken Free','Indoor Formula','Weight Control'];
+  const proteinSource = ['Chicken','Fish','Turkey','Beef','Salmon','Tuna','Duck'];
+  const priceRanges = ['INR 10 - INR 300','INR 301 - INR 500','INR 501 - INR 1000','INR 1000 - INR 2000','INR 2000+'];
+  const weights = ['70 g','85 g','100 g','170 g','300 g','400 g','500 g','800 g','1 kg','1.5 kg','2 kg','3 kg','5 kg','10 kg'];
+  const sizes = ['Small','Medium','Large','Extra Large'];
+  const subCategories = ['Dry Food','Wet Food','Daily Meals','Grain Free','Kitten Food','Hypoallergenic','Veterinary Food','Food Toppers & Gravy'];
+
+  const routeMap = {
+    'All Cat Food': '/cats/cat-food/all-cat-food',
+    'Dry Food': '/cats/cat-food/dry-food',
+    'Wet Food': '/cats/cat-food/wet-food',
+    'Grain Free': '/cats/cat-food/grain-free',
+    'Kitten Food': '/cats/cat-food/kitten-food',
+    'Hypoallergenic': '/cats/cat-food/hypoallergenic',
+    'Veterinary Food': '/cats/cat-food/veterinary-food',
+    'Food Toppers & Gravy': '/cats/cat-food/food-toppers-and-gravy'
+  };
+
+  // extend routeMap to include other cat category landing paths
+  Object.assign(routeMap, {
+    'Cat Treats': '/cats/cat-treats',
+    'Cat Litter & Supplies': '/cats/cat-litter',
+    'Cat Toys': '/cats/cat-toys',
+    'Trees, Beds & Scratchers': '/cats/cat-bedding',
+    'Cat Bowls': '/cats/cat-bowls',
+    'Cat Collars & Accessories': '/cats/cat-collars',
+    'Cat Grooming': '/cats/cat-grooming'
+  });
+
+  const scrollTopLeft = () => { if (topRef.current) topRef.current.scrollBy({ left: -220, behavior: 'smooth' }); };
+  const scrollTopRight = () => { if (topRef.current) topRef.current.scrollBy({ left: 220, behavior: 'smooth' }); };
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+
+  // resolve API image urls
+  const resolveImageUrl = (p) => {
+    const candidate = p?.imageUrl || p?.image || p?.thumbnailUrl || p?.image_path;
+    if (!candidate) return '/assets/images/no_image.png';
+    if (/^(https?:)?\/\//i.test(candidate) || candidate.startsWith('data:')) return candidate;
+    const base = apiClient?.defaults?.baseURL || '';
+    return candidate.startsWith('/') ? `${base}${candidate}` : `${base}/${candidate}`;
+  };
+
+  // Load products from backend (with fallback) 
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        let apiProducts = [];
+        try {
+          const res = await productApi.getAll();
+          apiProducts = Array.isArray(res) ? res : [];
+        } catch (err) {
+          const resp = await dataService.getProducts();
+          apiProducts = resp?.data || [];
+        }
+
+        const normalized = apiProducts.map(p => ({
+          id: p?.id,
+          name: p?.name || p?.title,
+          category: p?.category || p?.categoryId || p?.subcategory || '',
+          subcategory: p?.subcategory || '',
+          brand: p?.brand || p?.manufacturer || 'Brand',
+          price: parseFloat(p?.price ?? p?.salePrice ?? 0) || 0,
+          original: parseFloat(p?.originalPrice ?? p?.mrp ?? p?.price ?? 0) || 0,
+          image: resolveImageUrl(p),
+          badges: p?.badges || [],
+          variants: p?.variants?.map(v => v?.weight || v?.label) || ['Default'],
+          tags: p?.tags || [],
+          lifeStage: p?.lifeStage || p?.age_group || '',
+          breedSize: p?.breedSize || p?.breed || '',
+          productType: p?.productType || p?.type || '',
+          specialDiet: p?.specialDiet || '',
+          proteinSource: p?.proteinSource || p?.protein || '',
+          weight: p?.weight || ''
+        }));
+
+        if (!mounted) return;
+        setProducts(normalized);
+      } catch (err) {
+        console.error('Failed to load cat products', err);
+        setProducts([]);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  // Apply filters and category filtering
+  useEffect(() => {
+    if (products.length === 0) return;
+
+    // derive category from routeMap key (initialActive) or pathname
+    const target = (initialActive || '').toLowerCase().replace(/\s+/g,'-');
+    const url = window.location.pathname;
+    let routeTarget = '';
+    try {
+      const m = url.match(/^\/cats\/([^\/\?]+)/i);
+      if (m && m[1]) routeTarget = decodeURIComponent(m[1]).toLowerCase();
+    } catch(e){}
+
+    const finalTarget = routeTarget || target || 'cat-food';
+
+    const search = new URLSearchParams(window.location.search).get('sub') || '';
+    const norm = s => String(s||'').toLowerCase().replace(/\s+/g,'-').replace(/[^\w-]/g,'');
+
+    let working = products.filter(p => {
+      const c = norm(p.category) || '';
+      const sc = norm(p.subcategory) || '';
+      return c.includes('cat') || sc.includes('cat') || c === finalTarget || sc === finalTarget || String(p.name || '').toLowerCase().includes('cat');
+    });
+
+    if (search) {
+      const t = norm(search);
+      working = working.filter(p => {
+        const sc = norm(p.subcategory || '');
+        const tags = (p.tags || []).map(x => norm(x)).join(' ');
+        const name = String(p.name || '').toLowerCase();
+        return sc === t || tags.includes(t) || name.includes(t.replace(/-/g,' '));
+      });
+    }
+
+    // Apply selected filters
+    if (selectedFilters.brands.length > 0) {
+      working = working.filter(p => selectedFilters.brands.includes(p.brand));
+    }
+    
+    if (selectedFilters.catKitten.length > 0) {
+      working = working.filter(p => selectedFilters.catKitten.some(ck => 
+        String(p.lifeStage || '').toLowerCase().includes(ck.toLowerCase()) ||
+        String(p.category || '').toLowerCase().includes(ck.toLowerCase())
+      ));
+    }
+
+    if (selectedFilters.lifeStages.length > 0) {
+      working = working.filter(p => selectedFilters.lifeStages.some(ls => 
+        String(p.lifeStage || '').toLowerCase().includes(ls.toLowerCase()) ||
+        String(p.name || '').toLowerCase().includes(ls.toLowerCase())
+      ));
+    }
+
+    if (selectedFilters.breedSizes.length > 0) {
+      working = working.filter(p => selectedFilters.breedSizes.some(bs => 
+        String(p.breedSize || '').toLowerCase().includes(bs.toLowerCase()) ||
+        String(p.name || '').toLowerCase().includes(bs.toLowerCase())
+      ));
+    }
+
+    if (selectedFilters.productTypes.length > 0) {
+      working = working.filter(p => selectedFilters.productTypes.some(pt => 
+        String(p.productType || '').toLowerCase().includes(pt.toLowerCase()) ||
+        String(p.subcategory || '').toLowerCase().includes(pt.toLowerCase()) ||
+        String(p.name || '').toLowerCase().includes(pt.toLowerCase())
+      ));
+    }
+
+    if (selectedFilters.specialDiets.length > 0) {
+      working = working.filter(p => selectedFilters.specialDiets.some(sd => 
+        String(p.specialDiet || '').toLowerCase().includes(sd.toLowerCase()) ||
+        String(p.name || '').toLowerCase().includes(sd.toLowerCase()) ||
+        (p.tags || []).some(tag => String(tag).toLowerCase().includes(sd.toLowerCase()))
+      ));
+    }
+
+    if (selectedFilters.proteinSource.length > 0) {
+      working = working.filter(p => selectedFilters.proteinSource.some(ps => 
+        String(p.proteinSource || '').toLowerCase().includes(ps.toLowerCase()) ||
+        String(p.name || '').toLowerCase().includes(ps.toLowerCase())
+      ));
+    }
+
+    if (selectedFilters.priceRanges.length > 0) {
+      working = working.filter(p => {
+        const price = p.price || 0;
+        return selectedFilters.priceRanges.some(range => {
+          if (range === 'INR 10 - INR 300') return price >= 10 && price <= 300;
+          if (range === 'INR 301 - INR 500') return price >= 301 && price <= 500;
+          if (range === 'INR 501 - INR 1000') return price >= 501 && price <= 1000;
+          if (range === 'INR 1000 - INR 2000') return price >= 1000 && price <= 2000;
+          if (range === 'INR 2000+') return price > 2000;
+          return true;
+        });
+      });
+    }
+
+    if (selectedFilters.weights.length > 0) {
+      working = working.filter(p => selectedFilters.weights.some(w => 
+        String(p.weight || '').toLowerCase().includes(w.toLowerCase()) ||
+        (p.variants || []).some(variant => String(variant).toLowerCase().includes(w.toLowerCase()))
+      ));
+    }
+
+    if (selectedFilters.subCategories.length > 0) {
+      working = working.filter(p => selectedFilters.subCategories.some(sc => 
+        String(p.subcategory || '').toLowerCase().includes(sc.toLowerCase()) ||
+        String(p.category || '').toLowerCase().includes(sc.toLowerCase())
+      ));
+    }
+
+    // Apply sorting
+    switch (selectedFilters.sortBy) {
+      case 'Price, low to high':
+        working.sort((a, b) => (a.price || 0) - (b.price || 0));
+        break;
+      case 'Price, high to low':
+        working.sort((a, b) => (b.price || 0) - (a.price || 0));
+        break;
+      case 'Alphabetically, A-Z':
+        working.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'Alphabetically, Z-A':
+        working.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+        break;
+      default:
+        // Featured - keep original order
+        break;
+    }
+
+    setFilteredProducts(working);
+  }, [products, selectedFilters, initialActive]);
+
+  return (
+    <>
+      <Helmet>
+        <title>Shop for Cats — Cat Food</title>
+        <style>{`
+          /* Hide scrollbars visually but keep scrolling functionality for this page */
+          .thin-gold-scroll {
+            scrollbar-width: none; /* Firefox */
+            scrollbar-color: transparent transparent;
+          }
+          .thin-gold-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+          .thin-gold-scroll::-webkit-scrollbar-track { background: transparent; }
+          .thin-gold-scroll::-webkit-scrollbar-thumb { background: transparent; }
+
+          /* hide scrollbar for horizontal top filters */
+          .hide-scrollbar {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+          }
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+          /* small scroll button styles */
+          .top-scroll-btn { width: 34px; height: 34px; border-radius: 9999px; }
+
+          /* highlight animation for target section when opened from top pills */
+          @keyframes highlightPulse {
+            0% { background: rgba(255,245,230,0); }
+            30% { background: rgba(255,245,230,0.9); }
+            70% { background: rgba(255,245,230,0.6); }
+            100% { background: rgba(255,245,230,0); }
+          }
+          .section-highlight {
+            animation: highlightPulse 1.2s ease-in-out;
+            border-radius: 6px;
+          }
+        `}</style>
+      </Helmet>
+      <Header cartItemCount={getCartItemCount()} cartItems={cartItems} onSearch={() => {}} />
+
+      <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-12 gap-6">
+        <aside className="col-span-12 lg:col-span-3 xl:col-span-2">
+          <div ref={leftRef} className="bg-white rounded border border-border overflow-hidden">
+            <ul className="divide-y">
+              {categories.map((c, idx)=> (
+                <li key={c.id} className={`relative border-b ${active===c.label ? 'bg-[#fff6ee]' : ''}`}>
+                  <button onClick={()=>{ setActive(c.label); const p = routeMap[c.label]; if(p) navigate(p); }} className="w-full text-left flex items-center gap-4 p-4 pr-6">
+                    <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border ${active===c.label ? 'ring-2 ring-orange-400' : 'border-gray-100'}`}>
+                      <img src={c.img} alt={c.label} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-800">{c.label}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{idx===0 ? '' : ''}</span>
+                  </button>
+                  {active===c.label && (<div className="absolute right-0 top-0 h-full w-1 bg-orange-400" />)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        <main ref={rightRef} className="col-span-12 lg:col-span-9 xl:col-span-10">
+          {/* top filter bar (horizontal scrolling pills) */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="relative flex-1 overflow-hidden">
+              {/* left scroll button */}
+              <button
+                onClick={scrollTopLeft}
+                aria-label="Scroll left"
+                className="top-scroll-btn hidden md:inline-flex items-center justify-center border border-border bg-white ml-1 mr-2 absolute left-0 top-1/2 transform -translate-y-1/2 z-10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {/* scrollable pill row */}
+              <div
+                ref={topRef}
+                className="hide-scrollbar overflow-x-auto pl-10 pr-10"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <div className="inline-flex items-center gap-2">
+                  {topFilters.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => openFilterAndScroll(t)}
+                      className={`flex items-center gap-2 text-sm px-3 py-1 border border-border rounded-full bg-white ${selectedTopFilter === t ? 'ring-1 ring-orange-300' : ''}`}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      {selectedTopFilter === t ? (
+                        <span className="inline-flex items-center justify-center w-4 h-4 bg-gray-100 rounded-sm">
+                          <span className="w-2 h-2 bg-green-500 rounded" />
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center w-4 h-4 bg-transparent rounded-sm" />
+                      )}
+                      <span>{t}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* right scroll button */}
+              <button
+                onClick={scrollTopRight}
+                aria-label="Scroll right"
+                className="top-scroll-btn hidden md:inline-flex items-center justify-center border border-border bg-white ml-2 mr-1 absolute right-0 top-1/2 transform -translate-y-1/2 z-10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Filter drawer trigger (mobile) */}
+          <div className="absolute top-6 right-6 z-40 md:hidden">
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="flex items-center gap-2 border border-border rounded px-3 py-1 bg-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L15 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 019 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+              </svg>
+              <span className="text-sm">Filter</span>
+            </button>
+          </div>
+
+          {/* product grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {(filteredProducts.length > 0 ? filteredProducts : sampleProducts).map(p=> (
+              <ProductCard key={p.id} p={p} />
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+
+    {/* Right-side filter drawer */}
+    <div aria-hidden={!filterOpen} className={`fixed inset-0 z-50 pointer-events-none ${filterOpen ? '' : ''}`}>
+      {/* overlay */}
+      <div
+        onClick={() => setFilterOpen(false)}
+        className={`absolute inset-0 bg-black/40 transition-opacity ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
+      />
+
+      {/* drawer panel */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        className={`fixed top-0 right-0 h-full bg-white w-full sm:w-96 shadow-xl transform transition-transform pointer-events-auto ${filterOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="flex items-center justify-between p-4 border-b">
+          <div>
+            <div className="text-sm font-semibold">Filter</div>
+            <div className="text-xs text-muted-foreground">{filteredProducts.length} products</div>
+          </div>
+          <div>
+            <button onClick={() => setFilterOpen(false)} className="p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* scrollable content */}
+        <div ref={drawerContentRef} className="px-4 pt-4 pb-32 hide-scrollbar overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          {/* Sort By */}
+          <section className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Sort By</h4>
+            <div className="flex flex-wrap gap-2">
+              {['Featured','Best selling','Alphabetically, A-Z','Alphabetically, Z-A','Price, low to high','Price, high to low','Date, old to new','Date, new to old'].map(s=> (
+                <button 
+                  key={s} 
+                  onClick={() => setSortBy(s)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.sortBy === s ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Brand */}
+          <section ref={el => sectionRefs.current['Brand'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Brand</h4>
+            <div className="flex flex-wrap gap-2">
+              {brands.map(b=> (
+                <button 
+                  key={b} 
+                  onClick={() => toggleFilter('brands', b)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.brands.includes(b) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Cat/Kitten */}
+          <section ref={el => sectionRefs.current['Cat/Kitten'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Cat/Kitten</h4>
+            <div className="flex flex-wrap gap-2">
+              {catKitten.map(d=> (
+                <button 
+                  key={d} 
+                  onClick={() => toggleFilter('catKitten', d)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.catKitten.includes(d) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Life stage */}
+          <section ref={el => sectionRefs.current['Life Stage'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Life stage</h4>
+            <div className="flex flex-wrap gap-2">
+              {lifeStages.map(l=> (
+                <button 
+                  key={l} 
+                  onClick={() => toggleFilter('lifeStages', l)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.lifeStages.includes(l) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Breed size */}
+          <section ref={el => sectionRefs.current['Breed Size'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Breed size</h4>
+            <div className="flex flex-wrap gap-2">
+              {breedSizes.map(b=> (
+                <button 
+                  key={b} 
+                  onClick={() => toggleFilter('breedSizes', b)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.breedSizes.includes(b) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Product type */}
+          <section ref={el => sectionRefs.current['Product Type'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Product type</h4>
+            <div className="flex flex-wrap gap-2">
+              {productTypes.map(p=> (
+                <button 
+                  key={p} 
+                  onClick={() => toggleFilter('productTypes', p)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.productTypes.includes(p) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Special diet */}
+          <section ref={el => sectionRefs.current['Special Diet'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Special diet</h4>
+            <div className="flex flex-wrap gap-2">
+              {specialDiets.map(s=> (
+                <button 
+                  key={s} 
+                  onClick={() => toggleFilter('specialDiets', s)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.specialDiets.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Protein source */}
+          <section ref={el => sectionRefs.current['Protein Source'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Protein source</h4>
+            <div className="flex flex-wrap gap-2">
+              {proteinSource.map(p=> (
+                <button 
+                  key={p} 
+                  onClick={() => toggleFilter('proteinSource', p)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.proteinSource.includes(p) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Price */}
+          <section ref={el => sectionRefs.current['Price'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Price</h4>
+            <div className="flex flex-wrap gap-2">
+              {priceRanges.map(r=> (
+                <button 
+                  key={r} 
+                  onClick={() => toggleFilter('priceRanges', r)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.priceRanges.includes(r) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Weight */}
+          <section ref={el => sectionRefs.current['Weight'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Weight</h4>
+            <div className="flex flex-wrap gap-2">
+              {weights.map(w=> (
+                <button 
+                  key={w} 
+                  onClick={() => toggleFilter('weights', w)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.weights.includes(w) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {w}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Size */}
+          <section ref={el => sectionRefs.current['Size'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Size</h4>
+            <div className="flex flex-wrap gap-2">
+              {sizes.map(s=> (
+                <button 
+                  key={s} 
+                  onClick={() => toggleFilter('sizes', s)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.sizes.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Sub category */}
+          <section ref={el => sectionRefs.current['Sub Category'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Sub category</h4>
+            <div className="flex flex-wrap gap-2">
+              {subCategories.map(s=> (
+                <button 
+                  key={s} 
+                  onClick={() => toggleFilter('subCategories', s)}
+                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.subCategories.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* footer actions */}
+        <div className="fixed bottom-0 right-0 left-auto w-full sm:w-96 bg-white border-t p-4 flex items-center justify-between">
+          <button onClick={clearAllFilters} className="text-sm text-orange-500">Clear All</button>
+          <button onClick={() => setFilterOpen(false)} className="bg-orange-500 text-white px-5 py-2 rounded">Continue</button>
+        </div>
+      </aside>
+    </div>
+    </>
+  );
+};
+
+export default CatFood;
