@@ -51,7 +51,7 @@ const sampleProducts = [
 
 const ProductCard = ({p}) => {
   const [qty] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState(p.variants?.[0] || null);
+  const [selectedVariant, setSelectedVariant] = useState((p.variants || [null])[0] || null);
   const { addToCart, addToWishlist, isInWishlist, removeFromWishlist } = useCart();
   const navigate = useNavigate();
 
@@ -90,14 +90,14 @@ const ProductCard = ({p}) => {
         <h3 onClick={() => navigate(`/product-detail-page?id=${p.id}`)} className="mt-3 text-sm font-semibold text-foreground cursor-pointer">{p.name}</h3>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {p.variants.map((v,i)=>(
+          {(p.variants || []).map((v,i)=>(
             <button key={i} onClick={() => setSelectedVariant(v)} className={`text-xs px-2 py-1 border border-border rounded ${selectedVariant === v ? 'bg-green-600 text-white' : 'bg-white'}`}>{v}</button>
           ))}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <div>
-            <div className="text-lg font-bold">₹{p.price.toFixed(2)}</div>
+            <div className="text-lg font-bold">₹{(Number(p.price) || 0).toFixed(2)}</div>
             {p.original && <div className="text-sm text-muted-foreground line-through">₹{p.original}</div>}
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -191,6 +191,7 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
 
   // sample filter data for the drawer (cat-specific filters)
   const brands = ['Meowsi','Royal Canin','Whiskas','Purina','Applaws','Friskies','Hill\'s','IAMS','Felix'];
+  const dogCat = ['Cat','Dog'];
   const catKitten = ['Kitten','Adult Cat'];
   const lifeStages = ['Kitten','Adult','Senior'];
   const breedSizes = ['Small','Medium','Large','Persian','Maine Coon','Siamese'];
@@ -228,6 +229,28 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
   const scrollTopRight = () => { if (topRef.current) topRef.current.scrollBy({ left: 220, behavior: 'smooth' }); };
   const leftRef = useRef(null);
   const rightRef = useRef(null);
+
+  // Wheel handlers to keep wheel events scoped to the internal containers
+  const handleLeftWheel = (e) => {
+    const el = leftRef.current;
+    if (!el) return;
+    // if horizontal scroll or shift-key, scroll horizontally
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+      el.scrollBy({ left: e.deltaX || e.deltaY, behavior: 'auto' });
+    } else {
+      // otherwise scroll vertically inside the left column
+      el.scrollBy({ top: e.deltaY, behavior: 'auto' });
+    }
+    e.stopPropagation();
+  };
+
+  const handleRightWheel = (e) => {
+    const el = rightRef.current;
+    if (!el) return;
+    // scroll the right content vertically
+    el.scrollBy({ top: e.deltaY, behavior: 'auto' });
+    e.stopPropagation();
+  };
 
   // resolve API image urls
   const resolveImageUrl = (p) => {
@@ -423,6 +446,7 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
         <title>Shop for Cats — Cat Food</title>
         <style>{`
           /* Hide scrollbars visually but keep scrolling functionality for this page */
+          /* Scoped class for internal scroll containers */
           .thin-gold-scroll {
             scrollbar-width: none; /* Firefox */
             scrollbar-color: transparent transparent;
@@ -431,6 +455,15 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
           .thin-gold-scroll::-webkit-scrollbar-track { background: transparent; }
           .thin-gold-scroll::-webkit-scrollbar-thumb { background: transparent; }
 
+          /* Also hide global browser scrollbars for this page's body so outer scrollbar isn't visible */
+          html, body, #root {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE 10+ */
+          }
+          html::-webkit-scrollbar, body::-webkit-scrollbar, #root::-webkit-scrollbar {
+            display: none; width: 0; height: 0;
+          }
+
           /* hide scrollbar for horizontal top filters */
           .hide-scrollbar {
             -ms-overflow-style: none; /* IE and Edge */
@@ -438,7 +471,7 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
           }
           .hide-scrollbar::-webkit-scrollbar { display: none; }
 
-          /* small scroll button styles */
+          /* small scroll button styles (page-scoped) */
           .top-scroll-btn { width: 34px; height: 34px; border-radius: 9999px; }
 
           /* highlight animation for target section when opened from top pills */
@@ -457,29 +490,46 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
       <Header cartItemCount={getCartItemCount()} cartItems={cartItems} onSearch={() => {}} />
 
       <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-12 gap-6">
-        <aside className="col-span-12 lg:col-span-3 xl:col-span-2">
-          <div ref={leftRef} className="bg-white rounded border border-border overflow-hidden">
+      <div className="grid grid-cols-12 gap-3 md:gap-6">
+        {/* On small screens: give categories a little more room so icon+label are not cramped */}
+        <aside className="col-span-3 lg:col-span-3 xl:col-span-2">
+          <div
+            ref={leftRef}
+            onWheel={handleLeftWheel}
+            className="bg-white rounded border border-border overflow-hidden thin-gold-scroll"
+            style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}
+          >
             <ul className="divide-y">
               {categories.map((c, idx)=> (
                 <li key={c.id} className={`relative border-b ${active===c.label ? 'bg-[#fff6ee]' : ''}`}>
-                  <button onClick={()=>{ setActive(c.label); const p = routeMap[c.label]; if(p) navigate(p); }} className="w-full text-left flex items-center gap-4 p-4 pr-6">
+                  <button
+                    onClick={() => { setActive(c.label); const p = routeMap[c.label]; if (p) navigate(p); }}
+                    className="w-full text-center flex flex-col items-center gap-1 p-2 md:flex-row md:text-left md:items-center md:gap-3 md:p-4"
+                  >
                     <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border ${active===c.label ? 'ring-2 ring-orange-400' : 'border-gray-100'}`}>
                       <img src={c.img} alt={c.label} className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-sm font-medium text-gray-800">{c.label}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{idx===0 ? '' : ''}</span>
+                    <span className="text-xs md:text-sm font-medium text-gray-800 mt-1 md:mt-0">{c.label}</span>
                   </button>
-                  {active===c.label && (<div className="absolute right-0 top-0 h-full w-1 bg-orange-400" />)}
+                  {/* orange vertical accent on the right when active */}
+                  {active===c.label && (
+                    <div className="absolute right-0 top-0 h-full w-1 bg-orange-400" />
+                  )}
                 </li>
               ))}
             </ul>
           </div>
         </aside>
 
-        <main ref={rightRef} className="col-span-12 lg:col-span-9 xl:col-span-10">
-          {/* top filter bar (horizontal scrolling pills) */}
+        <main
+          ref={rightRef}
+          onWheel={handleRightWheel}
+          className="col-span-9 lg:col-span-9 xl:col-span-10"
+          style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}
+        >
+          {/* top filter bar (simple placeholder matching ref) */}
           <div className="mb-4 flex items-center justify-between">
+            {/* prevent the top pill row from causing page-level overflow; keep scrolling internal */}
             <div className="relative flex-1 overflow-hidden">
               {/* left scroll button */}
               <button
@@ -532,7 +582,7 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
             </div>
           </div>
 
-          {/* Filter drawer trigger (mobile) */}
+          {/* Filter drawer trigger (right side) */}
           <div className="absolute top-6 right-6 z-40 md:hidden">
             <button
               onClick={() => setFilterOpen(true)}
@@ -545,9 +595,9 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
             </button>
           </div>
 
-          {/* product grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {(filteredProducts.length > 0 ? filteredProducts : sampleProducts).map(p=> (
+          {/* product grid: keep 2 columns on mobile, expand on md and up; tighter gaps on mobile */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {sampleProducts.map(p=> (
               <ProductCard key={p.id} p={p} />
             ))}
           </div>
@@ -572,7 +622,7 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <div className="text-sm font-semibold">Filter</div>
-            <div className="text-xs text-muted-foreground">{filteredProducts.length} products</div>
+            <div className="text-xs text-muted-foreground">250 products</div>
           </div>
           <div>
             <button onClick={() => setFilterOpen(false)} className="p-2">
@@ -583,20 +633,14 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
           </div>
         </div>
 
-        {/* scrollable content */}
-        <div ref={drawerContentRef} className="px-4 pt-4 pb-32 hide-scrollbar overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+  {/* scrollable content */}
+  <div ref={drawerContentRef} className="px-4 pt-4 pb-32 hide-scrollbar overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
           {/* Sort By */}
           <section className="mb-6">
             <h4 className="text-sm font-medium mb-3">Sort By</h4>
             <div className="flex flex-wrap gap-2">
               {['Featured','Best selling','Alphabetically, A-Z','Alphabetically, Z-A','Price, low to high','Price, high to low','Date, old to new','Date, new to old'].map(s=> (
-                <button 
-                  key={s} 
-                  onClick={() => setSortBy(s)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.sortBy === s ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {s}
-                </button>
+                <button key={s} className="text-xs px-3 py-1 border border-border rounded bg-white">{s}</button>
               ))}
             </div>
           </section>
@@ -605,183 +649,75 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
           <section ref={el => sectionRefs.current['Brand'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Brand</h4>
             <div className="flex flex-wrap gap-2">
-              {brands.map(b=> (
-                <button 
-                  key={b} 
-                  onClick={() => toggleFilter('brands', b)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.brands.includes(b) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {b}
-                </button>
-              ))}
+              {brands.map(b=> (<button key={b} className="text-xs px-3 py-1 border border-border rounded bg-white">{b}</button>))}
             </div>
           </section>
 
-          {/* Cat/Kitten */}
-          <section ref={el => sectionRefs.current['Cat/Kitten'] = el} className="mb-6">
-            <h4 className="text-sm font-medium mb-3">Cat/Kitten</h4>
-            <div className="flex flex-wrap gap-2">
-              {catKitten.map(d=> (
-                <button 
-                  key={d} 
-                  onClick={() => toggleFilter('catKitten', d)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.catKitten.includes(d) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
+          {/* Dog/cat */}
+          <section ref={el => sectionRefs.current['Dog/Cat'] = el} className="mb-6">
+            <h4 className="text-sm font-medium mb-3">Dog/cat</h4>
+            <div className="flex flex-wrap gap-2">{dogCat.map(d=> (<button key={d} className="text-xs px-3 py-1 border border-border rounded bg-white">{d}</button>))}</div>
           </section>
 
           {/* Life stage */}
           <section ref={el => sectionRefs.current['Life Stage'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Life stage</h4>
-            <div className="flex flex-wrap gap-2">
-              {lifeStages.map(l=> (
-                <button 
-                  key={l} 
-                  onClick={() => toggleFilter('lifeStages', l)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.lifeStages.includes(l) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{lifeStages.map(l=> (<button key={l} className="text-xs px-3 py-1 border border-border rounded bg-white">{l}</button>))}</div>
           </section>
 
           {/* Breed size */}
           <section ref={el => sectionRefs.current['Breed Size'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Breed size</h4>
-            <div className="flex flex-wrap gap-2">
-              {breedSizes.map(b=> (
-                <button 
-                  key={b} 
-                  onClick={() => toggleFilter('breedSizes', b)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.breedSizes.includes(b) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {b}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{breedSizes.map(b=> (<button key={b} className="text-xs px-3 py-1 border border-border rounded bg-white">{b}</button>))}</div>
           </section>
 
           {/* Product type */}
           <section ref={el => sectionRefs.current['Product Type'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Product type</h4>
-            <div className="flex flex-wrap gap-2">
-              {productTypes.map(p=> (
-                <button 
-                  key={p} 
-                  onClick={() => toggleFilter('productTypes', p)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.productTypes.includes(p) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{productTypes.map(p=> (<button key={p} className="text-xs px-3 py-1 border border-border rounded bg-white">{p}</button>))}</div>
           </section>
 
           {/* Special diet */}
           <section ref={el => sectionRefs.current['Special Diet'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Special diet</h4>
-            <div className="flex flex-wrap gap-2">
-              {specialDiets.map(s=> (
-                <button 
-                  key={s} 
-                  onClick={() => toggleFilter('specialDiets', s)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.specialDiets.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{specialDiets.map(s=> (<button key={s} className="text-xs px-3 py-1 border border-border rounded bg-white">{s}</button>))}</div>
           </section>
 
           {/* Protein source */}
           <section ref={el => sectionRefs.current['Protein Source'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Protein source</h4>
-            <div className="flex flex-wrap gap-2">
-              {proteinSource.map(p=> (
-                <button 
-                  key={p} 
-                  onClick={() => toggleFilter('proteinSource', p)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.proteinSource.includes(p) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{proteinSource.map(p=> (<button key={p} className="text-xs px-3 py-1 border border-border rounded bg-white">{p}</button>))}</div>
           </section>
 
           {/* Price */}
           <section ref={el => sectionRefs.current['Price'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Price</h4>
-            <div className="flex flex-wrap gap-2">
-              {priceRanges.map(r=> (
-                <button 
-                  key={r} 
-                  onClick={() => toggleFilter('priceRanges', r)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.priceRanges.includes(r) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{priceRanges.map(r=> (<button key={r} className="text-xs px-3 py-1 border border-border rounded bg-white">{r}</button>))}</div>
           </section>
 
           {/* Weight */}
           <section ref={el => sectionRefs.current['Weight'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Weight</h4>
-            <div className="flex flex-wrap gap-2">
-              {weights.map(w=> (
-                <button 
-                  key={w} 
-                  onClick={() => toggleFilter('weights', w)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.weights.includes(w) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {w}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{weights.map(w=> (<button key={w} className="text-xs px-3 py-1 border border-border rounded bg-white">{w}</button>))}</div>
           </section>
 
           {/* Size */}
           <section ref={el => sectionRefs.current['Size'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Size</h4>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map(s=> (
-                <button 
-                  key={s} 
-                  onClick={() => toggleFilter('sizes', s)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.sizes.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{sizes.map(s=> (<button key={s} className="text-xs px-3 py-1 border border-border rounded bg-white">{s}</button>))}</div>
           </section>
 
           {/* Sub category */}
           <section ref={el => sectionRefs.current['Sub Category'] = el} className="mb-6">
             <h4 className="text-sm font-medium mb-3">Sub category</h4>
-            <div className="flex flex-wrap gap-2">
-              {subCategories.map(s=> (
-                <button 
-                  key={s} 
-                  onClick={() => toggleFilter('subCategories', s)}
-                  className={`text-xs px-3 py-1 border border-border rounded ${selectedFilters.subCategories.includes(s) ? 'bg-orange-100 border-orange-300' : 'bg-white'}`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{subCategories.map(s=> (<button key={s} className="text-xs px-3 py-1 border border-border rounded bg-white">{s}</button>))}</div>
           </section>
         </div>
 
         {/* footer actions */}
         <div className="fixed bottom-0 right-0 left-auto w-full sm:w-96 bg-white border-t p-4 flex items-center justify-between">
-          <button onClick={clearAllFilters} className="text-sm text-orange-500">Clear All</button>
-          <button onClick={() => setFilterOpen(false)} className="bg-orange-500 text-white px-5 py-2 rounded">Continue</button>
+          <button className="text-sm text-orange-500">Clear All</button>
+          <button className="bg-orange-500 text-white px-5 py-2 rounded">Continue</button>
         </div>
       </aside>
     </div>

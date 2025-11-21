@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../../components/ui/Header';
+import { useCart } from '../../contexts/CartContext';
 
 const slugify = (s = '') => String(s || '').toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
@@ -12,85 +13,93 @@ const normalizeForParam = (s = '') => String(s || '')
 const PharmacyCollectionPage = ({ subLabel }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    if (!subLabel) return;
+  // sample products for pharmacy listing (fallback)
+  const sampleProducts = [
+    { id: 'ph1', name: 'Clumping Cat Litter', image: '/assets/images/essential/meowsi.webp', badges: ['Absorbent'], variants: ['5 L','10 L'], price: 499, original: null },
+    { id: 'ph2', name: 'Durable Litter Tray', image: '/assets/images/essential/whiskas.webp', badges: ['Easy Clean'], variants: ['Small','Large'], price: 899, original: 999 },
+    { id: 'ph3', name: 'Scooper with Filter', image: '/assets/images/essential/sheba.webp', badges: ['Handy'], variants: ['One Size'], price: 149, original: null },
+    { id: 'ph4', name: 'Probiotic Gut Supplement', image: '/assets/images/essential/meowsi.webp', badges: ['Gut Health'], variants: ['30 Caps'], price: 699, original: 799 },
+  ];
 
-    const slug = normalizeForParam(subLabel);
-    const current = searchParams.get('sub') || '';
-    if (current !== slug) {
-      const next = new URLSearchParams(searchParams.toString());
-      next.set('sub', slug);
-      setSearchParams(next, { replace: true });
-    }
-  }, [subLabel]);
+  const navigate = useNavigate();
+  const { addToCart, addToWishlist, isInWishlist, removeFromWishlist } = useCart();
 
-  // determine categories for the left rail. Prefer route-based detection
-  // (so /pharmacy/dogs/* shows dog-specific categories) and fall back
-  // to the `subLabel` content when provided.
   const location = useLocation();
-  const lower = String(subLabel || '').toLowerCase();
-  const dogCategories = [
-    'Medicines for Skin',
-    'Joint & Mobility',
-    'Digestive Care',
-    'All Dog Pharmacy'
-  ];
-  const catCategories = [
-    'Skin & Coat Care',
-    'Worming',
-    'Oral Care',
-    'All Cat Pharmacy'
-  ];
-  const medicinesCategories = [
-    'Antibiotics',
-    'Antifungals',
-    'Anti Inflammatories',
-    'Pain Relief',
-    'All Medicines'
-  ];
-  const supplementsCategories = [
-    'Vitamins & Minerals',
-    'Joint Supplements',
-    'Probiotics & Gut Health',
-    'Skin & Coat Supplements',
-    'All Supplements'
-  ];
-  const prescriptionCategories = [
-    'Renal Support',
-    'Hypoallergenic Diets',
-    'Digestive Support',
-    'Weight Management',
-    'All Prescription Food'
-  ];
-  const defaultCategories = [
-    'Medicines',
-    'Supplements',
-    'Prescription Food',
-    'All Pharmacy'
-  ];
-
   const pathname = String(location?.pathname || '').toLowerCase();
   const isDogPath = pathname.includes('/pharmacy/dogs');
   const isCatPath = pathname.includes('/pharmacy/cats');
-  const isMedicinesPath = pathname.includes('/pharmacy/medicines');
-  const isSupplementsPath = pathname.includes('/pharmacy/supplements');
-  const isPrescriptionPath = pathname.includes('/pharmacy/prescription-food');
-  const categories = isMedicinesPath
-    ? medicinesCategories
-    : isSupplementsPath
-    ? supplementsCategories
-    : isPrescriptionPath
-    ? prescriptionCategories
-    : isDogPath
-    ? dogCategories
+
+  const categories = isDogPath
+    ? ['Medicines for Skin', 'Joint & Mobility', 'Digestive Care', 'All Dog Pharmacy']
     : isCatPath
-    ? catCategories
-    : (lower.includes('dog') ? dogCategories : defaultCategories);
+    ? ['Skin & Coat Care', 'Worming', 'Oral Care', 'All Cat Pharmacy']
+    : ['Medicines', 'Supplements', 'Prescription Food', 'All Pharmacy'];
 
   const handleClickCategory = (label) => {
     const next = new URLSearchParams(searchParams.toString());
     next.set('sub', slugify(label));
     setSearchParams(next);
+  };
+
+  const ProductCard = ({ p }) => {
+    const selectedVariant = (p?.variants || [null])[0] || null;
+    return (
+      <article className="bg-white rounded-lg border border-border overflow-hidden shadow-sm">
+        <div className="p-3">
+          <div className="h-8 flex items-center justify-start">
+            <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-t-md">{p?.badges?.[0]}</div>
+          </div>
+
+          <button
+            onClick={() => navigate(`/product-detail-page?id=${p.id}`)}
+            className="mt-3 h-44 flex items-center justify-center bg-[#f6f8fb] rounded w-full"
+          >
+            <img src={p?.image} alt={p?.name} className="max-h-40 object-contain" />
+          </button>
+
+          <h3
+            onClick={() => navigate(`/product-detail-page?id=${p.id}`)}
+            className="mt-3 text-sm font-semibold text-foreground cursor-pointer"
+          >
+            {p?.name}
+          </h3>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(p?.variants || []).map((v, i) => (
+              <button
+                key={i}
+                className={`text-xs px-2 py-1 border border-border rounded ${selectedVariant === v ? 'bg-green-600 text-white' : 'bg-white'}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <div className="text-lg font-bold">₹{(Number(p?.price) || 0).toFixed(2)}</div>
+              {p?.original && <div className="text-sm text-muted-foreground line-through">₹{p.original}</div>}
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={() => addToCart({ id: p.id, name: p.name, price: p.price }, 1)}
+                className="bg-orange-500 text-white px-4 py-2 rounded-full"
+              >
+                Add
+              </button>
+
+              <button
+                onClick={() => (isInWishlist(p.id) ? removeFromWishlist(p.id) : addToWishlist({ id: p.id, name: p.name, price: p.price }))}
+                className="text-xs text-muted-foreground"
+              >
+                {isInWishlist(p.id) ? 'Remove ♥' : 'Wishlist ♡'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+    );
   };
 
   return (
@@ -123,11 +132,10 @@ const PharmacyCollectionPage = ({ subLabel }) => {
             <h1 className="text-2xl font-heading font-bold">{subLabel || 'Pharmacy'}</h1>
             <p className="text-sm text-muted-foreground mt-2 mb-4">Select a category from the left to filter the pharmacy products.</p>
 
-            {/* Placeholder grid for products - the real product grid is rendered by collection pages */}
+            {/* Product grid (2-column on mobile, 4 on md+) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {/* simple placeholders to show layout */}
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white rounded border border-border p-3 h-40" />
+              {sampleProducts.map((p) => (
+                <ProductCard key={p.id} p={p} />
               ))}
             </div>
           </section>
