@@ -265,7 +265,7 @@ export default function DogClothing({ initialActive = 'All Dog Clothing' }) {
             <div className="relative flex-1 overflow-hidden">
               {/* left scroll button */}
               <button
-                onClick={scrollTopLeft}
+                onClick={() => scrollPills('left')}
                 aria-label="Scroll left"
                 className="top-scroll-btn hidden md:inline-flex items-center justify-center border border-border bg-white ml-1 mr-2 absolute left-0 top-1/2 transform -translate-y-1/2 z-10"
               >
@@ -303,7 +303,7 @@ export default function DogClothing({ initialActive = 'All Dog Clothing' }) {
 
               {/* right scroll button */}
               <button
-                onClick={scrollTopRight}
+                onClick={() => scrollPills('right')}
                 aria-label="Scroll right"
                 className="top-scroll-btn hidden md:inline-flex items-center justify-center border border-border bg-white ml-2 mr-1 absolute right-0 top-1/2 transform -translate-y-1/2 z-10"
               >

@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
-import productApi from '../../services/productApi';
-import dataService from '../../services/dataService';
-import apiClient from '../../services/api';
+
 import { Dog } from 'lucide-react';
 
 const categories = [
@@ -63,6 +61,8 @@ const DogGroomingPage = ({ initialActive = 'All Dog Grooming' }) => {
   const navigate = useNavigate();
   const leftRef = useRef(null);
   const rightRef = useRef(null);
+  const handleLeftWheel = (e) => { if (leftRef.current) { e.preventDefault(); leftRef.current.scrollTop += e.deltaY; } };
+  const handleRightWheel = (e) => { if (rightRef.current) { e.preventDefault(); rightRef.current.scrollTop += e.deltaY; } };
   const routeMap = {
     'Brushes & Combs': '/shop-for-dogs/dog-grooming/brushes-combs',
     'Dry Bath, Wipes & Perfume': '/shop-for-dogs/dog-grooming/dry-bath-wipes-perfume',
@@ -569,6 +569,6 @@ const DogGroomingPage = ({ initialActive = 'All Dog Grooming' }) => {
             </>
           );
         };
-   
+        
 
 export default DogGroomingPage;
