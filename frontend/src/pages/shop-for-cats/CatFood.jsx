@@ -721,6 +721,13 @@ const CatFood = ({ initialActive = 'All Cat Food' }) => {
         </div>
       </aside>
     </div>
+
+    {/* Footer - Desktop Only */}
+    
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

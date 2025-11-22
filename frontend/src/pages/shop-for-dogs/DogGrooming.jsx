@@ -2,6 +2,8 @@ import React, {useState, useRef, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
+import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 import { useCart } from '../../contexts/CartContext';
 
 import { Dog } from 'lucide-react';
@@ -334,7 +336,7 @@ const DogGroomingPage = ({ initialActive = 'All Dog Grooming' }) => {
               </Helmet>
               <Header cartItemCount={getCartItemCount()} cartItems={cartItems} onSearch={() => {}} />
         
-              <div className="container mx-auto px-4 py-8">
+              <div className="container mx-auto px-4 py-8 pb-20 lg:pb-0">
               <div className="grid grid-cols-12 gap-3 md:gap-6">
                 {/* On small screens: give categories a little more room so icon+label are not cramped */}
                 <aside className="col-span-3 lg:col-span-3 xl:col-span-2">
@@ -450,6 +452,14 @@ const DogGroomingPage = ({ initialActive = 'All Dog Grooming' }) => {
               </div>
             </div>
         
+            {/* Footer and mobile nav */}
+            <div className="mb-20 lg:mb-0">
+              <Footer />
+            </div>
+            <div className="lg:hidden">
+              <MobileBottomNav />
+            </div>
+
             {/* Right-side filter drawer */}
             <div aria-hidden={!filterOpen} className={`fixed inset-0 z-50 pointer-events-none ${filterOpen ? '' : ''}`}>
               {/* overlay */}

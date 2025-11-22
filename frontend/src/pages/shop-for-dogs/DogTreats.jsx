@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
 import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 // Treat categories (left sidebar)
 const categories = [
@@ -444,6 +445,12 @@ const DogTreats = ({ initialActive = 'All Dog Treats' }) => {
         </div>
       </aside>
     </div>
+
+    {/* Footer */}
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
 import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 const categories = [
   { id: 'beds', label: 'Beds', img: '/assets/images/dog/b2.webp' },
@@ -371,6 +372,12 @@ export default function DogBedding({ initialActive = 'All Dog Bedding' }) {
         </div>
       </aside>
     </div>
+
+    {/* Footer */}
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import Header from '../../../components/ui/Header';
+import MobileBottomNav from '../../../components/ui/MobileBottomNav';
 import { useCart } from '../../../contexts/CartContext';
 import productApi from '../../../services/productApi';
 import dataService from '../../../services/dataService';
@@ -270,6 +271,7 @@ export default function DogGrooming() {
           </div>
         </aside>
       </div>
+      <MobileBottomNav />
     </>
   );
 }

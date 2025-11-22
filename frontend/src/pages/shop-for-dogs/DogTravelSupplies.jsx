@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
 import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 const categories = [
   { id: 'all', label: 'All Travel Supplies', img: '/assets/images/dog/dt1.webp' },
@@ -493,6 +494,12 @@ export default function DogTravelSupplies({ initialActive = 'All Travel Supplies
         </div>
       </aside>
     </div>
+
+    {/* Footer */}
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

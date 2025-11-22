@@ -12,6 +12,7 @@ import HouseOfPetCo from './components/HouseOfPetCo';
 import CatBanner from './components/CatBanner';
 import DogBanner from './components/DogBanner';
 import Footer from './components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 import WinterCollection from './components/WinterCollection'; // Updated import path for WinterCollection
 
 // MobileHome removed to unify mobile and desktop into one responsive page
@@ -89,92 +90,96 @@ const Homepage = () => {
         <link rel="canonical" href="https://neenusnatural.com/homepage" />
       </Helmet>
 
-  {/* Mobile-first content (small screens) - reuse existing components instead of a separate mobile page */}
-  <div className="lg:hidden">
-    <div className="bg-[#163f81] text-white text-center py-1 text-sm">GST 2.0 Reforms</div>
+      {/* Mobile-first content (small screens) - reuse existing components instead of a separate mobile page */}
+      <div className="lg:hidden">
+        <div className="bg-[#163f81] text-white text-center py-1 text-sm">GST 2.0 Reforms</div>
 
-    <div className="flex items-center justify-between px-4 py-2">
-      <button aria-label="Open menu" className="p-2" onClick={() => setIsMegaMenuOpenMobile(true)}>
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        <div className="flex items-center justify-between px-4 py-2">
+          <button aria-label="Open menu" className="p-2" onClick={() => setIsMegaMenuOpenMobile(true)}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
 
-      <div className="text-center">
-        <div className="text-sm">Delivering to <span className="font-semibold">560034</span></div>
-        <button className="text-xs text-[#ff7a00]">Change</button>
-      </div>
+          <div className="text-center">
+            <div className="text-sm">Delivering to <span className="font-semibold">560034</span></div>
+            <button className="text-xs text-[#ff7a00]">Change</button>
+          </div>
 
-  <button aria-label="Wishlist" className="p-2">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 21.382 4.318 12.682a4.5 4.5 0 010-6.364z" />
-        </svg>
-      </button>
-    </div>
+          <button aria-label="Wishlist" className="p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 21.382 4.318 12.682a4.5 4.5 0 010-6.364z" />
+            </svg>
+          </button>
+        </div>
 
-    {/* Mobile MegaMenu (drawer) */}
-    <MegaMenu
-      isOpen={isMegaMenuOpenMobile}
-      onClose={() => setIsMegaMenuOpenMobile(false)}
-      activeCategory={null}
-    />
-
-    <div className="flex items-center px-4 py-2 gap-3">
-      <img src="/assets/images/logo.png" alt="logo" className="w-10 h-10 object-contain" />
-      <div className="flex-1">
-        <input
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(searchQuery); }}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search for products"
-          className="w-full border border-[#e6e6e6] rounded-full px-4 py-2 text-sm"
+        {/* Mobile MegaMenu (drawer) */}
+        <MegaMenu
+          isOpen={isMegaMenuOpenMobile}
+          onClose={() => setIsMegaMenuOpenMobile(false)}
+          activeCategory={null}
         />
+
+        <div className="flex items-center px-4 py-2 gap-3">
+          <img src="/assets/images/logo.png" alt="logo" className="w-10 h-10 object-contain" />
+          <div className="flex-1">
+            <input
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(searchQuery); }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for products"
+              className="w-full border border-[#e6e6e6] rounded-full px-4 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <main className="pb-28">
+          {/* Hero Slider */}
+          <HeroSlider />
+
+          {/* Promo cards (coupons / codes) - placed directly after hero */}
+          <PromoCards />
+
+          {/* Essentials section (below promo cards) */}
+          <Essential />
+
+          {/* Featured Brands (next section) */}
+          <FeaturedBrands />
+
+          {/* From the House of PET&CO */}
+          <HouseOfPetCo />
+
+          {/* Cat banner between HouseOfPetCo and Decoding Cats */}
+          <CatBanner />
+
+          {/* Decoding Cats section (moved out of FeaturedBrands so it appears after the banner) */}
+          <DecodingCatsSection />
+
+          {/* Dog banner above Winter Collection */}
+          <DogBanner />
+
+          {/* Winter Collection Section */}
+          <WinterCollection /> {/* Integrated WinterCollection component */}
+
+          {/* Category Tiles */}
+          <CategoryTiles />
+
+          {/* Bestsellers Carousel */}
+          <BestsellersCarousel onAddToCart={handleAddToCart} />
+
+          {/* Winter Collection Section */}
+          <WinterCollection /> {/* Integrated WinterCollection component */}
+        </main>
+
+        {/* Footer */}
+        <Footer />
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
-    </div>
 
-      <main className="pb-28">
-        {/* Hero Slider */}
-        <HeroSlider />
-
-        {/* Promo cards (coupons / codes) - placed directly after hero */}
-        <PromoCards />
-
-        {/* Essentials section (below promo cards) */}
-        <Essential />
-
-  {/* Featured Brands (next section) */}
-  <FeaturedBrands />
-
-  {/* From the House of PET&CO */}
-  <HouseOfPetCo />
-
-  {/* Cat banner between HouseOfPetCo and Decoding Cats */}
-  <CatBanner />
-
-  {/* Decoding Cats section (moved out of FeaturedBrands so it appears after the banner) */}
-  <DecodingCatsSection />
-
-  {/* Dog banner above Winter Collection */}
-  <DogBanner />
-
-  {/* Winter Collection Section */}
-  <WinterCollection /> {/* Integrated WinterCollection component */}
-
-  {/* Category Tiles */}
-  <CategoryTiles />
-
-        {/* Bestsellers Carousel */}
-        <BestsellersCarousel onAddToCart={handleAddToCart} />
-
-        {/* Winter Collection Section */}
-        <WinterCollection /> {/* Integrated WinterCollection component */}
-      </main>
-
-    <Footer />
-  </div>
-
-  {/* Desktop / large screens */}
-  <div className="hidden lg:block min-h-screen bg-background">
+      {/* Desktop / large screens */}
+      <div className="hidden lg:block min-h-screen bg-background">
         {/* Header */}
         <Header
           cartItemCount={getCartItemCount()}

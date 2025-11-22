@@ -61,12 +61,12 @@ const Header = ({ onSearch = () => {} }) => {
       const delta = current - (lastScrollY.current || 0);
 
       // always show when near top
-      if (current < 50) {
+      if (current < 80) {
         setIsHidden(false);
-      } else if (delta > 10) {
+      } else if (delta > 15) {
         // scrolled down
         setIsHidden(true);
-      } else if (delta < -10) {
+      } else if (delta < -15) {
         // scrolled up
         setIsHidden(false);
       }
@@ -607,7 +607,7 @@ const Header = ({ onSearch = () => {} }) => {
         </div>
       </div>
         {/* Category Navigation Row (below main header) */}
-  <div ref={navRef} className={`hidden lg:block bg-[#fff6e6] border-t border-b border-[#f0e0b8] relative transform transition-transform duration-300 ${isHidden ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+  <div ref={navRef} className={`hidden lg:block bg-[#fff6e6] border-t border-b border-[#f0e0b8] relative transition-all duration-200 ease-in-out ${isHidden ? 'h-0 overflow-hidden opacity-0' : 'h-auto opacity-100'}`}>
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between px-2 py-3">
               <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
@@ -677,7 +677,7 @@ const Header = ({ onSearch = () => {} }) => {
 
         {/* Spacer to push page content below the fixed header */}
         {(() => {
-          const spacerHeight = headerHeight - (isHidden ? (navHeight || 0) : 0);
+          const spacerHeight = headerHeight; // Keep stable - always account for full header height
           return <div aria-hidden="true" style={{ height: spacerHeight }} className="w-full" />;
         })()}
 
@@ -706,3 +706,5 @@ const Header = ({ onSearch = () => {} }) => {
 };
 
 export default Header;
+
+

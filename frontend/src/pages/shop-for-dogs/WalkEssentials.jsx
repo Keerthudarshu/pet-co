@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
 import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 const categories = [
   { id: 'all', label: 'All Walk Essentials', img: '/assets/images/dog/walk_essentials_eae662d4-1b94-46f2-ba9d-d0338a125746.webp' },
@@ -424,6 +425,12 @@ export default function WalkEssentials({ initialActive = 'All Walk Essentials' }
         </div>
       </aside>
     </div>
+
+    {/* Footer */}
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

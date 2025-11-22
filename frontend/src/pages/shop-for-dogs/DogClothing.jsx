@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import { useCart } from '../../contexts/CartContext';
 import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 const categories = [
   { id: 'festive-special', label: 'Festive Special', img: '/assets/images/dog/dc2.webp' },
@@ -215,7 +216,7 @@ export default function DogClothing({ initialActive = 'All Dog Clothing' }) {
   }, [selectedFilters]);
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden pb-20 lg:pb-0">
       <Helmet>
         <title>{`Shop for Dogs — ${active} | PET&CO`}</title>
       </Helmet>
@@ -453,6 +454,16 @@ export default function DogClothing({ initialActive = 'All Dog Clothing' }) {
         </div>
       </aside>
     </div>
+      {/* Footer (visible on all sizes). outer container has bottom padding to avoid
+          the fixed mobile nav overlapping the footer on small screens */}
+      <div>
+        <Footer />
+      </div>
+
+      {/* Mobile bottom navigation for small screens */}
+      <div className="lg:hidden">
+        <MobileBottomNav />
+      </div>
     </div>
   );
 };
