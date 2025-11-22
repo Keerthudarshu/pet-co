@@ -2,6 +2,8 @@ import React, {useState, useRef, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
+import Footer from '../homepage/components/Footer';
+import MobileBottomNav from '../../components/ui/MobileBottomNav';
 import { useCart } from '../../contexts/CartContext';
 import productApi from '../../services/productApi';
 import dataService from '../../services/dataService';
@@ -600,6 +602,12 @@ const CatToys = ({ initialActive = 'All Cat Toys' }) => {
         </div>
       </aside>
     </div>
+    
+    {/* Footer */}
+    <Footer />
+
+    {/* Mobile Bottom Navigation */}
+    <MobileBottomNav />
     </>
   );
 };

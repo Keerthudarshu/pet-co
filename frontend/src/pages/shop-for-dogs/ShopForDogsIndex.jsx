@@ -4,7 +4,7 @@ import DogTreats from './DogTreats';
 import WalkEssentials from './WalkEssentials';
 import DogFood from './DogFood';
 import DogTrainingEssentials from './DogTrainingEssentials';
-import DogGrooming from './dog-grooming/DogGrooming';
+import DogGrooming from './DogGrooming';
 import MobileBottomNav from '../../components/ui/MobileBottomNav';
 
 export default function ShopForDogsIndex() {

@@ -61,7 +61,7 @@ const UserAuth = () => {
     if (!validateForm()) return;
     setLoading(true);
     setError('');
-    
+
     try {
       if (isLogin) {
         const { user, error } = await signIn(formData.email, formData.password);
@@ -82,7 +82,7 @@ const UserAuth = () => {
           password: formData.password,
           phone: formData.phone
         });
-        
+
         if (user) {
           // Registration successful and user is automatically logged in
           const from = location.state?.from || '/homepage';
@@ -111,7 +111,7 @@ const UserAuth = () => {
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </h1>
               <p className="text-muted-foreground">
-                {isLogin ? 'Sign in to your account' : 'Join Neenu\'s Natural family'}
+                {isLogin ? 'Sign in to your account' : 'Join Pet & Co family'}
               </p>
               {location.state?.message && (
                 <p className="text-primary text-sm font-medium mt-2">
